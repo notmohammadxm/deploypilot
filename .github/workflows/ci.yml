@@ -42,9 +42,14 @@ jobs:
               }
             }
           }
+          if ($counts.critical -gt 0) {
+            throw "Critical dependency vulnerabilities were reported."
+          }
           if ($auditExitCode -ne 0) {
             Write-Warning "Dependency advisories were reported. Review the package-level details above; this diagnostic step does not auto-apply breaking upgrades."
           }
+          $global:LASTEXITCODE = 0
+          exit 0
       - name: ESLint
         run: npm run lint
       - name: Unit tests
