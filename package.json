@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "dist": "npm run lint && npm test && electron-builder --win nsis",
+    "dist": "npm run lint && npm test && electron-builder --win nsis --publish never",
     "dist:dir": "electron-builder --dir"
   },
   "dependencies": {
