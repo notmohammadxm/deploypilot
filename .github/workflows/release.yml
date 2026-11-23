@@ -4,17 +4,23 @@ on:
   push:
     tags:
       - 'v*.*.*'
-  workflow_dispatch:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
 
 jobs:
   build-release:
+    if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
     runs-on: windows-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -29,5 +35,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ github.token }}
+          tag_name: ${{ github.event_name == 'workflow_run' && 'v1.0.0' || github.ref_name }}
+          target_commitish: ${{ github.event.workflow_run.head_sha || github.sha }}
           files: dist/DeployPilot-Setup-*.exe
           generate_release_notes: true

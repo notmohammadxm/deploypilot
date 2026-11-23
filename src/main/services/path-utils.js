@@ -6,7 +6,7 @@ export function normalizeRemotePath(input) {
   if (raw === '~' || raw.startsWith('~/') || raw.startsWith('$HOME')) {
     throw new Error('Use an absolute server path below the account home directory, not a home alias.');
   }
-  if (/[\0\r\n]/.test(raw)) throw new Error('Remote paths cannot contain control characters.');
+  if ([...raw].some((character) => character.charCodeAt(0) < 32 || character.charCodeAt(0) === 127)) throw new Error('Remote paths cannot contain control characters.');
   const parts = raw.split('/').filter(Boolean);
   if (parts.some((part) => part === '.' || part === '..')) throw new Error('Remote paths cannot contain dot segments.');
   const normalized = path.posix.normalize(raw.startsWith('/') ? raw : '/' + raw);

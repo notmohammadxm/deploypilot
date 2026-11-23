@@ -46,10 +46,9 @@ async function runWithRetries(task, retries, signal) {
 async function runPool(items, concurrency, callback) {
   let next = 0;
   const workers = Array.from({ length: Math.max(1, concurrency) }, async () => {
-    while (true) {
+    while (next < items.length) {
       const index = next;
       next += 1;
-      if (index >= items.length) return;
       await callback(items[index], index);
     }
   });
@@ -74,7 +73,7 @@ async function preserveProtectedFiles(connection, targetRoot, stageRoot, rules, 
 
 async function applyPermissions(connection, remotePath, isDirectory, enabled) {
   if (!enabled || typeof connection.chmod !== 'function') return;
-  try { await connection.chmod(remotePath, isDirectory ? 0o755 : 0o644); } catch {}
+  try { await connection.chmod(remotePath, isDirectory ? 0o755 : 0o644); } catch { /* chmod is best-effort because FTP servers vary. */ }
 }
 
 export async function deployDirectory({ connection, profile, target, localRoot, localFiles, signal, onProgress, dryRun = false }) {
@@ -137,14 +136,14 @@ export async function deployDirectory({ connection, profile, target, localRoot, 
   const strategy = profile.options?.strategy || 'staging';
   if (strategy === 'staging') {
     const parent = path.posix.dirname(remoteRoot);
-    assertSafeRemotePath(parent);
+    if (parent === '/') throw new Error('Staging directly under the server root is not allowed.');
     const base = path.posix.basename(remoteRoot);
     const stageRoot = parent + '/' + base + '.__deploy_tmp__';
     const oldRoot = parent + '/' + base + '.__old__';
     assertRemoteSibling(parent, stageRoot);
     assertRemoteSibling(parent, oldRoot);
-    await connection.removeDir(stageRoot, parent).catch(() => {});
-    await connection.removeDir(oldRoot, parent).catch(() => {});
+    await connection.removeDir(stageRoot, parent).catch(() => { /* The stage directory may not exist yet. */ });
+    await connection.removeDir(oldRoot, parent).catch(() => { /* A leftover old directory is best-effort cleanup. */ });
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'deploypilot-protect-'));
     let movedOld = false;
     try {
@@ -162,12 +161,12 @@ export async function deployDirectory({ connection, profile, target, localRoot, 
       try {
         await connection.rename(stageRoot, remoteRoot, parent);
       } catch (error) {
-        if (movedOld) await connection.rename(oldRoot, remoteRoot, parent).catch(() => {});
+        if (movedOld) await connection.rename(oldRoot, remoteRoot, parent).catch(() => { /* Preserve the original deployment error if recovery also fails. */ });
         throw error;
       }
       if (movedOld) await connection.removeDir(oldRoot, parent);
     } catch (error) {
-      await connection.removeDir(stageRoot, parent).catch(() => {});
+      await connection.removeDir(stageRoot, parent).catch(() => { /* Preserve the original deployment error if cleanup fails. */ });
       if (movedOld) {
         const targetNow = await connection.stat(remoteRoot).catch(() => null);
         if (!targetNow) await connection.rename(oldRoot, remoteRoot, parent).catch(() => {});

@@ -11,7 +11,6 @@ import { createConnection } from './services/connection.js';
 import { runDeployment } from './services/deployer.js';
 import { listBackups, verifyBackup, deleteBackup, assertBackupBelongsToProfile } from './services/backup.js';
 import { restoreBackup } from './services/rollback.js';
-import { backupDirectory } from './services/profileStore.js';
 import { assertSafeRemotePath, remoteJoin } from './services/path-utils.js';
 import { evaluateUploadPath } from './services/rules.js';
 

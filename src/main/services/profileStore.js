@@ -37,7 +37,7 @@ async function preserveConfigCopy() {
     const configPath = store.path;
     await fs.access(configPath);
     await fs.copyFile(configPath, configPath + '.bak');
-  } catch {}
+  } catch { /* The first write has no previous config file to preserve. */ }
 }
 
 export function listProfiles() {
@@ -145,6 +145,14 @@ export function saveSettings(patch) {
 
 export function getStorePath() { return store.path; }
 export function backupDirectory(profileName, targetName, root) {
-  const safe = (value) => String(value || 'unnamed').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_').replace(/\.+$/g, '').slice(0, 70) || 'unnamed';
+  const safe = (value) => [...String(value || 'unnamed')]
+    .map((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127 ? '_' : character;
+    })
+    .join('')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\.+$/g, '')
+    .slice(0, 70) || 'unnamed';
   return path.join(root, safe(profileName), safe(targetName));
 }

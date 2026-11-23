@@ -19,7 +19,7 @@ DeployPilot is a Windows desktop deployment utility for profile-based FTP, FTPS,
 ## Requirements
 
 - Windows 10 or 11
-- Node.js 20 or newer for local development
+- Node.js 20 or newer for local development and CI; current Electron releases bundle their own newer Node.js runtime.
 - A reachable FTP/FTPS/SFTP server and credentials
 - A local project directory and a separate local backup directory (recommended)
 

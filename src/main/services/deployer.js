@@ -146,6 +146,6 @@ export async function runDeployment(profileId, options = {}) {
     emit(progress, 'complete', 'error', { message: error.message, result });
     throw error;
   } finally {
-    await connection?.close().catch(() => {});
+    await connection?.close().catch(() => { /* Connection teardown must not mask deployment result. */ });
   }
 }

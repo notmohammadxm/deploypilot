@@ -75,13 +75,11 @@ export async function createBackup({ connection, profile, target, onProgress, si
   const contentRoot = path.join(tempRoot, 'remote');
   await fs.mkdir(contentRoot, { recursive: true });
   try {
-    let files;
-    try {
-      files = await downloadRemoteTree(connection, remoteRoot, contentRoot, profile.rules, signal, onProgress);
-    } catch (error) {
-      if (/not found|no such|550|does not exist|enoent/i.test(error.message)) files = [];
-      else throw error;
-    }
+    const rootStat = await connection.stat(remoteRoot);
+    if (rootStat && !rootStat.isDirectory) throw new Error('The backup target path exists but is not a directory.');
+    const files = rootStat
+      ? await downloadRemoteTree(connection, remoteRoot, contentRoot, profile.rules, signal, onProgress)
+      : [];
     const manifest = {
       version: 1,
       profileId: profile.id,
@@ -108,11 +106,11 @@ export async function createBackup({ connection, profile, target, onProgress, si
     }
     return { ...backup, verified: Array.isArray(verified) };
   } catch (error) {
-    await fs.rm(zipPath, { force: true }).catch(() => {});
-    await fs.rm(manifestPath, { force: true }).catch(() => {});
+    await fs.rm(zipPath, { force: true }).catch(() => { /* Cleanup is best-effort after the original backup error. */ });
+    await fs.rm(manifestPath, { force: true }).catch(() => { /* Cleanup is best-effort after the original backup error. */ });
     throw error;
   } finally {
-    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+    await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => { /* Cleanup is best-effort after the original backup error. */ });
   }
 }
 
@@ -124,7 +122,7 @@ async function listBackupsForDirectory(directory) {
     const zipPath = path.join(directory, name);
     const manifestPath = path.join(directory, name.slice(0, -4) + '.manifest.json');
     let manifest = {};
-    try { manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')); } catch {}
+    try { manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')); } catch { /* Missing or malformed sidecar metadata is non-fatal while listing backups. */ }
     const stat = await fs.stat(zipPath).catch(() => null);
     rows.push({
       id: name.slice(0, -4),
@@ -171,7 +169,7 @@ export async function verifyBackup(backupPath) {
     await extract(safe, { dir: directory });
     const manifestPath = safe.slice(0, -4) + '.manifest.json';
     let manifest = null;
-    try { manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')); } catch {}
+    try { manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')); } catch { /* Missing or malformed sidecar metadata is non-fatal while listing backups. */ }
     return { valid: true, manifest, path: safe };
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
