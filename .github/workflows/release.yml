@@ -26,7 +26,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - name: Set up Node.js 22.12 for Electron packaging
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22.12.0
       - name: Generate npm lockfile
