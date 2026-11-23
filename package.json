@@ -74,5 +74,6 @@
       "uninstallDisplayName": "DeployPilot",
       "deleteAppDataOnUninstall": false
     }
-  }
+  },
+  "author": "Mohammad XM"
 }
