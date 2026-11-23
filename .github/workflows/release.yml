@@ -35,12 +35,20 @@ jobs:
         run: npm ci
       - name: Build and test Windows installer
         run: npm run dist
+      - name: Generate SHA256 checksum
+        shell: pwsh
+        run: |
+          $installer = Get-Item "dist/DeployPilot-Setup-*.exe"
+          $hash = (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($installer.Name)" | Out-File -FilePath "$($installer.FullName).sha256" -Encoding ascii
       - name: Upload Windows installer artifact
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: DeployPilot-Windows-Installer
-          path: dist/DeployPilot-Setup-*.exe
+          path: |
+            dist/DeployPilot-Setup-*.exe
+            dist/DeployPilot-Setup-*.exe.sha256
           if-no-files-found: warn
           retention-days: 30
       - name: Publish GitHub Release
@@ -50,7 +58,9 @@ jobs:
           token: ${{ github.token }}
           tag_name: ${{ github.ref_name }}
           target_commitish: ${{ github.sha }}
-          files: dist/DeployPilot-Setup-*.exe
+          files: |
+            dist/DeployPilot-Setup-*.exe
+            dist/DeployPilot-Setup-*.exe.sha256
           generate_release_notes: true
           overwrite_files: true
         env:
