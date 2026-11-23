@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import extract from 'extract-zip';
+import { extractZipSafely } from './zip-extract.js';
 import { createConnection } from './connection.js';
 import { getProfileWithSecrets } from './profileStore.js';
 import { createBackup, assertBackupBelongsToProfile } from './backup.js';
@@ -24,7 +24,7 @@ export async function restoreBackup(profileId, backup, confirmed, onProgress) {
     onProgress?.({ step: 'safety-backup', status: 'running' });
     const safetyBackup = await createBackup({ connection, profile, target });
     onProgress?.({ step: 'safety-backup', status: 'success', backup: safetyBackup });
-    await extract(backup.path, { dir: tempRoot });
+    await extractZipSafely(backup.path, tempRoot);
     const scan = await scanLocalProject(tempRoot, { ...profile.rules, uploadExclude: String(profile.rules?.uploadExclude || '') + '\\nmanifest.json' });
     onProgress?.({ step: 'restore', status: 'running', files: scan.files.length });
     const restored = await deployDirectory({
