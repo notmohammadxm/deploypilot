@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import archiver from 'archiver';
-import extract from 'extract-zip';
+import { ZipArchive } from 'archiver';
+import { extractZipSafely } from './zip-extract.js';
 import { once } from 'node:events';
 import { evaluateBackupPath } from './rules.js';
 import { remoteJoin, assertSafeRemotePath } from './path-utils.js';
@@ -50,10 +50,8 @@ async function downloadRemoteTree(connection, remoteRoot, localRoot, rules, sign
 }
 
 async function zipDirectory(sourceDir, zipPath) {
-  const output = await fs.open(zipPath, 'w');
-  await output.close();
   const stream = (await import('node:fs')).createWriteStream(zipPath);
-  const archive = archiver('zip', { zlib: { level: 9 } });
+  const archive = new ZipArchive({ zlib: { level: 9 } });
   archive.on('warning', (error) => { if (error.code !== 'ENOENT') archive.emit('error', error); });
   archive.on('error', (error) => stream.destroy(error));
   archive.pipe(stream);
@@ -95,7 +93,7 @@ export async function createBackup({ connection, profile, target, onProgress, si
     await fs.writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
     await zipDirectory(contentRoot, zipPath);
     const verifyDir = path.join(tempRoot, 'verify');
-    await extract(zipPath, { dir: verifyDir });
+    await extractZipSafely(zipPath, verifyDir);
     const verified = await fs.readdir(verifyDir);
     const backup = { id, path: zipPath, manifestPath, createdAt: manifest.createdAt, fileCount: files.length, targetId: target.id, targetName: target.name, remotePath: remoteRoot };
     const existing = (await listBackupsForDirectory(outputRoot)).filter((row) => row.path !== zipPath);
@@ -166,7 +164,7 @@ export async function verifyBackup(backupPath) {
   await fs.access(safe);
   const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'deploypilot-verify-'));
   try {
-    await extract(safe, { dir: directory });
+    await extractZipSafely(safe, directory);
     const manifestPath = safe.slice(0, -4) + '.manifest.json';
     let manifest = null;
     try { manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8')); } catch { /* Missing or malformed sidecar metadata is non-fatal while listing backups. */ }
@@ -188,6 +186,6 @@ export async function deleteBackup(backupPath, backupRoot, confirmed) {
 }
 
 export async function extractBackup(backupPath, destination) {
-  await extract(backupPath, { dir: destination });
+  await extractZipSafely(backupPath, destination);
   return destination;
 }
