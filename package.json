@@ -33,7 +33,7 @@
     "electron": "45.4.1",
     "electron-builder": "^26.0.12",
     "eslint": "^9.39.1",
-    "globals": "^16.5.0",
+    "globals": "^17.14.0",
     "prettier": "^3.6.2"
   },
   "build": {
