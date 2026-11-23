@@ -35,6 +35,14 @@ jobs:
         run: npm ci
       - name: Build and test Windows installer
         run: npm run dist
+      - name: Upload Windows installer artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeployPilot-Windows-Installer
+          path: dist/DeployPilot-Setup-*.exe
+          if-no-files-found: warn
+          retention-days: 30
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
