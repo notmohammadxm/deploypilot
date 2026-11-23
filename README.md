@@ -103,7 +103,7 @@ npm run lint
 npm test
 ~~~
 
-GitHub Actions runs ESLint and Node's built-in test runner on windows-latest with Node.js 20. The tag workflow builds the NSIS installer and attaches DeployPilot-Setup-<version>.exe to the GitHub Release.
+GitHub Actions runs ESLint and Node's built-in test runner on windows-latest with Node.js 20. After a successful push to main, the Windows workflow builds the NSIS installer and uploads `DeployPilot-Windows-Installer` as a 30-day Actions artifact. Pushing a version tag such as `v1.0.0` also publishes the matching `DeployPilot-Setup-<version>.exe` to GitHub Releases.
 
 ## Known limitations
 
