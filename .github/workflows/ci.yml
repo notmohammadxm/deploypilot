@@ -24,6 +24,27 @@ jobs:
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
       - name: Install dependencies
         run: npm ci --ignore-scripts
+      - name: Dependency security audit
+        shell: pwsh
+        run: |
+          $auditOutput = npm audit --json
+          $auditExitCode = $LASTEXITCODE
+          $report = ($auditOutput -join "`n") | ConvertFrom-Json -Depth 100
+          $counts = $report.metadata.vulnerabilities
+          Write-Host ("npm audit: {0} critical, {1} high, {2} moderate, {3} low" -f $counts.critical, $counts.high, $counts.moderate, $counts.low)
+          $report.vulnerabilities.PSObject.Properties | ForEach-Object {
+            $name = $_.Name
+            $item = $_.Value
+            Write-Host ("{0}: severity={1}; direct={2}; fixAvailable={3}" -f $name, $item.severity, $item.isDirect, ($item.fixAvailable | ConvertTo-Json -Compress))
+            foreach ($advisory in $item.via) {
+              if ($advisory -isnot [string]) {
+                Write-Host ("  - {0} ({1})" -f $advisory.title, $advisory.url)
+              }
+            }
+          }
+          if ($auditExitCode -ne 0) {
+            Write-Warning "Dependency advisories were reported. Review the package-level details above; this diagnostic step does not auto-apply breaking upgrades."
+          }
       - name: ESLint
         run: npm run lint
       - name: Unit tests
