@@ -1,9 +1,11 @@
 import test from 'node:test';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import { normalizeRemotePath, assertSafeRemotePath, assertRemoteWithin, assertRemoteSibling, remoteJoin } from '../src/main/services/path-utils.js';
 import { evaluateUploadPath, evaluateBackupPath } from '../src/main/services/rules.js';
 import { selectExpiredBackups } from '../src/main/services/retention.js';
 import { createDeploymentPlan } from '../src/main/services/planner.js';
+import { resolveZipEntry } from '../src/main/services/zip-extract.js';
 
 test('normalizes Windows and relative paths to POSIX remote paths', () => {
   assert.equal(normalizeRemotePath('var\\www\\site/'), '/var/www/site');
@@ -75,4 +77,26 @@ test('diff planner skips a same-size file with matching modification time', () =
   );
   assert.equal(plan.uploads.length, 0);
   assert.equal(plan.skipped[0].reason, 'Unchanged (size and modification time)');
+});
+
+
+test('safe ZIP extraction resolves valid relative paths inside its destination', () => {
+  const root = path.resolve('deploypilot-extract-root');
+  const file = resolveZipEntry(root, { fileName: 'assets/app.js', externalFileAttributes: (0o100644 << 16) >>> 0 });
+  const directory = resolveZipEntry(root, { fileName: 'assets/', externalFileAttributes: (0o040755 << 16) >>> 0 });
+  assert.equal(file.destination, path.join(root, 'assets', 'app.js'));
+  assert.equal(file.isDirectory, false);
+  assert.equal(directory.destination, path.join(root, 'assets'));
+  assert.equal(directory.isDirectory, true);
+});
+
+test('safe ZIP extraction rejects traversal, absolute paths, unsafe Windows names and symlinks', () => {
+  const root = path.resolve('deploypilot-extract-root');
+  for (const fileName of ['../outside.txt', '/etc/passwd', 'C:/Windows/system.ini', 'folder/../../outside.txt', 'folder/CON.txt', 'folder/stream:name']) {
+    assert.throws(() => resolveZipEntry(root, { fileName, externalFileAttributes: (0o100644 << 16) >>> 0 }));
+  }
+  assert.throws(() => resolveZipEntry(root, {
+    fileName: 'payload-link',
+    externalFileAttributes: (0o120777 << 16) >>> 0
+  }), /symbolic links/i);
 });
