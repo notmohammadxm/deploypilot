@@ -111,7 +111,7 @@ GitHub Actions runs ESLint, unit tests, and a dependency security audit on windo
 - Diff sync relies on file size and modification time, not remote content hashes.
 - The built-in FTP client uses passive data connections; the passive-mode option is retained in the profile for compatibility.
 - The configured maintenance-mode filename is stored in the profile UI; automatic server maintenance-file orchestration is not yet part of this release. Transfer speed and ETA are estimates updated after each completed file.
-- Remote ZIP verification confirms extraction succeeds and validates ZIP structure; it is not an end-to-end remote content hash verification.
+- ZIP verification checks entry sizes and safe relative paths, rejects symbolic links and special files, and confirms extraction succeeds; it is not an end-to-end remote content hash verification.
 - SSH key support reads the selected key file at profile-save time. Re-select the key after moving or rotating it.
 
 ## License
